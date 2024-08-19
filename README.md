@@ -1,3 +1,21 @@
+<div align="center">
+<sup>Special thanks to:</sup>
+<br>
+<br>
+<a href="https://warp.dev/?utm_source=github&utm_medium=referral&utm_campaign=fzfvim_20240209">
+  <div>
+    <img src="https://raw.githubusercontent.com/junegunn/i/master/warp.png" width="300" alt="Warp">
+  </div>
+  <b>Warp is a modern, Rust-based terminal with AI built in so you and your team can build great software, faster.</b>
+  <div>
+    <sup>Visit warp.dev to learn more.</sup>
+  </div>
+</a>
+<br>
+<hr>
+</div>
+<br>
+
 fzf :heart: vim
 ===============
 
@@ -46,13 +64,19 @@ so you can omit it if you use a plugin manager that doesn't support hooks.
 
 ### Dependencies
 
-- [fzf][fzf-main] 0.41.1 or above
+- [fzf][fzf-main] 0.54.0 or above
 - For syntax-highlighted preview, install [bat](https://github.com/sharkdp/bat)
 - If [delta](https://github.com/dandavison/delta) is available, `GF?`,
   `Commits` and `BCommits` will use it to format `git diff` output.
 - `Ag` requires [The Silver Searcher (ag)][ag]
 - `Rg` requires [ripgrep (rg)][rg]
 - `Tags` and `Helptags` require Perl
+- `Tags PREFIX` requires `readtags` command from [Universal Ctags](https://ctags.io/)
+
+```sh
+# Installing dependencies using Homebrew
+brew install fzf bat ripgrep the_silver_searcher perl universal-ctags
+```
 
 Commands
 --------
@@ -69,7 +93,7 @@ Commands
 | `:RG [PATTERN]`        | [rg][rg] search result; relaunch ripgrep on every keystroke                           |
 | `:Lines [QUERY]`       | Lines in loaded buffers                                                               |
 | `:BLines [QUERY]`      | Lines in the current buffer                                                           |
-| `:Tags [QUERY]`        | Tags in the project (`ctags -R`)                                                      |
+| `:Tags [PREFIX]`       | Tags in the project (`ctags -R`)                                                      |
 | `:BTags [QUERY]`       | Tags in the current buffer                                                            |
 | `:Changes`             | Changelist across all open buffers                                                    |
 | `:Marks`               | Marks                                                                                 |
@@ -152,8 +176,20 @@ let g:fzf_vim.preview_window = []
 #### Command-level options
 
 ```vim
-" [Buffers] Jump to the existing window if possible
+" [Buffers] Jump to the existing window if possible (default: 0)
 let g:fzf_vim.buffers_jump = 1
+
+" [Ag|Rg|RG] Display path on a separate line for narrow screens (default: 0)
+" * Requires Perl and fzf 0.53.0 or later
+let g:fzf_vim.grep_multi_line = 0
+   " PATH:LINE:COL:LINE
+let g:fzf_vim.grep_multi_line = 1
+   " PATH:LINE:COL:
+   " LINE
+let g:fzf_vim.grep_multi_line = 2
+   " PATH:LINE:COL:
+   " LINE
+   " (empty line)
 
 " [[B]Commits] Customize the options used by 'git log':
 let g:fzf_vim.commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
