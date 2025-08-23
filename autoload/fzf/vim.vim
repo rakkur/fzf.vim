@@ -369,7 +369,7 @@ function! s:action_for(key, ...)
   " errors. e.g. E471: Argument required: tab drop
   if !a:0
     if !edit
-      normal! m'
+      call setpos("''", getpos('.'))
       silent! call s:execute_silent(cmd)
     endif
   else
@@ -378,7 +378,7 @@ function! s:action_for(key, ...)
     " instructed to stay on the current buffer.
     let stay = edit && (a:0 > 1 && a:2 || fnamemodify(a:1, ':p') ==# expand('%:p'))
     if !stay
-      normal! m'
+      call setpos("''", getpos('.'))
       call s:execute_silent((len(cmd) ? cmd : 'edit').' '.s:escape(a:1))
     endif
   endif
@@ -669,9 +669,8 @@ function! s:history_sink(type, lines)
   let key  = a:lines[0]
   let item = matchstr(a:lines[1], ' *[0-9]\+ *\zs.*')
   if key == 'ctrl-e'
-    call histadd(a:type, item)
     redraw
-    call feedkeys(a:type."\<up>", 'n')
+    call feedkeys(a:type.item, 'nt')
   else
     if a:type == ':'
       call histadd(a:type, item)
@@ -715,6 +714,9 @@ endfunction
 " ------------------------------------------------------------------
 
 function! s:get_git_root(dir)
+  if empty(a:dir) && exists('*FugitiveWorkTree')
+    return FugitiveWorkTree()
+  endif
   let dir = len(a:dir) ? a:dir : substitute(split(expand('%:p:h'), '[/\\]\.git\([/\\]\|$\)')[0], '^fugitive://', '', '')
   let root = systemlist('git -C ' . shellescape(dir) . ' rev-parse --show-toplevel')[0]
   return v:shell_error ? '' : (len(a:dir) ? fnamemodify(a:dir, ':p') : root)
@@ -1005,7 +1007,7 @@ function! fzf#vim#grep2(command_prefix, query, ...)
   let name = join(words, '-')
   let fallback = s:is_win ? '' : ' || :'
   let opts = {
-  \ 'source': s:is_win ? 'cd .' : ':',
+  \ 'source':  s:is_win ? 'cd .' : ':',
   \ 'options': ['--ansi', '--prompt', toupper(name).'> ', '--query', a:query,
   \             '--disabled',
   \             '--multi', '--bind', 'alt-a:select-all,alt-d:deselect-all',
@@ -1233,9 +1235,9 @@ function! s:command_sink(lines)
   endif
   let cmd = matchstr(a:lines[1], s:tab.'\zs\S*\ze'.s:tab)
   if empty(a:lines[0])
-    call feedkeys(':'.cmd.(a:lines[1][0] == '!' ? '' : ' '), 'n')
+    call feedkeys(':'.cmd.(a:lines[1][0] == '!' ? '' : ' '), 'nt')
   else
-    call feedkeys(':'.cmd."\<cr>", 'n')
+    call feedkeys(':'.cmd."\<cr>", 'nt')
   endif
 endfunction
 
@@ -1359,15 +1361,25 @@ function! s:mark_sink(lines)
   execute 'normal! `'.matchstr(a:lines[1], '\S').'zz'
 endfunction
 
-function! fzf#vim#marks(...)
+function! fzf#vim#marks(...) abort
+  let [initial_marks, extra] = (a:0 && type(a:1) == type('')) ?
+      \ [a:1, a:000[1:]] : ['', a:000]
+
   redir => cout
-  silent marks
+  execute 'silent! marks' initial_marks
   redir END
+
   let list = split(cout, "\n")
+
+  " If first line is not the expected header, no marks found
+  if empty(list) || list[0] =~# '^E'
+    return s:warn('No marks found')
+  endif
+
   return s:fzf('marks', {
   \ 'source':  extend(list[0:0], map(list[1:], 's:format_mark(v:val)')),
   \ 'sink*':   s:function('s:mark_sink'),
-  \ 'options': '+m -x --ansi --tiebreak=index --header-lines 1 --tiebreak=begin --prompt "Marks> "'}, a:000)
+  \ 'options': '+m -x --ansi --tiebreak=index --header-lines 1 --tiebreak=begin --prompt "Marks> "'}, extra)
 endfunction
 
 " ------------------------------------------------------------------
@@ -1417,9 +1429,9 @@ function! fzf#vim#jumps(...)
   let s:jump_current = pos
   let current = -pos-1
   return s:fzf('jumps', {
-  \ 'source'  : map(s:jumplist, 's:jump_format(v:val)'),
-  \ 'sink*'   : s:function('s:jump_sink'),
-  \ 'options' : ['+m', '-x', '--ansi', '--tiebreak=index', '--cycle', '--scroll-off=999', '--sync', '--bind', 'start:pos('.current.')+offset-middle', '--tac', '--tiebreak=begin', '--prompt', 'Jumps> ', '--preview-window', '+{3}/2', '--tabstop=2', '--delimiter', '[:\s]+'],
+  \ 'source':  map(s:jumplist, 's:jump_format(v:val)'),
+  \ 'sink*':   s:function('s:jump_sink'),
+  \ 'options': ['+m', '-x', '--ansi', '--tiebreak=index', '--cycle', '--scroll-off=999', '--sync', '--bind', 'start:pos('.current.')+offset-middle', '--tac', '--tiebreak=begin', '--prompt', 'Jumps> ', '--preview-window', '+{3}/2', '--tabstop=2', '--delimiter', '[:\s]+'],
   \ }, a:000)
 endfunction
 
